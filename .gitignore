@@ -8,3 +8,5 @@
 
 directory.csv
 .env
+/auth.json
+/message.txt

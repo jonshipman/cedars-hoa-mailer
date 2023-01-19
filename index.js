@@ -1,8 +1,11 @@
+import './init.js';
+
 import fs from 'node:fs/promises';
 
-import csv from 'csvtojson';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
+
+import { load } from './google-auth.js';
 
 dotenv.config();
 
@@ -16,23 +19,38 @@ if (SMTP_PORT) {
 	SMTP_PORT = parseInt(SMTP_PORT);
 }
 
-const subject = '📢 SUBJECT';
-const text = `
-MESSAGE.
-<br/><br/>
-The Cedars Board 🌲
-`;
+const subject = process.env.SUBJECT;
 
-async function processFile() {
-	const csvFilePath = await fs.realpath('directory.csv');
-
-	const residents = await csv().fromFile(csvFilePath);
-
-	// const residents = [{ Email: process.env.TEST_EMAIL }];
-
+async function mail() {
 	// Bail if there are no envvars.
 	if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
 		return;
+	}
+
+	let text = await fs.readFile('message.txt');
+	text = text.toString();
+
+	if (!text.includes('</') && !text.includes('/>')) {
+		text = text.replace(/\n/g, '<br/>');
+	}
+
+	const doc = await load();
+	const sheet = doc.sheetsByIndex[0];
+	const rows = await sheet.getRows();
+	let emails = rows
+		.map((x) => x.Email.split(','))
+		.flat()
+		.map((x) => x.trim())
+		.filter((x) => !!x);
+
+	// Bail if there are no emails.
+	if (!emails || !emails.length) {
+		console.error('Issue with the Google connection. No emails returned.');
+		return;
+	}
+
+	if (process.env.TEST_EMAIL) {
+		emails = [process.env.TEST_EMAIL];
 	}
 
 	const transporter = nodemailer.createTransport({
@@ -44,41 +62,7 @@ async function processFile() {
 		},
 	});
 
-	const emails = [];
-
-	for (const resident of residents) {
-		let email = resident.Email;
-
-		if (email.includes(',')) {
-			email = email
-				.split(',')
-				.filter((x) => !!x)
-				.map((x) => x.trim());
-		} else if (email.includes('\n')) {
-			email = email
-				.split('\n')
-				.filter((x) => !!x)
-				.map((x) => x.trim());
-		}
-
-		if (!email) {
-			continue;
-		}
-
-		if (Array.isArray(email) && 0 === email.length) {
-			continue;
-		}
-
-		if (Array.isArray(email)) {
-			for (const e of email) {
-				emails.push(e);
-			}
-		} else {
-			emails.push(email);
-		}
-	}
-
-	console.log(emails);
+	console.log('Email count:', emails.length);
 
 	try {
 		await transporter.sendMail({
@@ -94,4 +78,4 @@ async function processFile() {
 	}
 }
 
-processFile();
+mail();

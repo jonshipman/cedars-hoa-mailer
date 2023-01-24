@@ -64,17 +64,24 @@ async function mail() {
 
 	console.log('Email count:', emails.length);
 
-	try {
-		await transporter.sendMail({
-			from: 'The Cedars HOA <' + SMTP_FROM + '>',
-			replyTo: 'board@the-cedars.org',
-			to: 'board@the-cedars.org',
-			bcc: emails,
-			html: text,
-			subject,
-		});
-	} catch (e) {
-		console.error(e.message);
+	let [list, chunkSize] = [emails, 90];
+	list = [...Array(Math.ceil(list.length / chunkSize))].map((_) =>
+		list.splice(0, chunkSize)
+	);
+
+	for (const bcc of list) {
+		try {
+			await transporter.sendMail({
+				from: 'The Cedars HOA <' + SMTP_FROM + '>',
+				replyTo: 'board@the-cedars.org',
+				to: 'board@the-cedars.org',
+				bcc,
+				html: text,
+				subject,
+			});
+		} catch (e) {
+			console.error(e.message);
+		}
 	}
 }
 

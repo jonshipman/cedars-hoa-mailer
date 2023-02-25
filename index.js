@@ -30,6 +30,10 @@ async function mail() {
 	let text = await fs.readFile('message.txt');
 	text = text.toString();
 
+	if (process.env.NL) {
+		text = text.split('\n').join('<br />');
+	}
+
 	if (!text.includes('</') && !text.includes('/>')) {
 		text = text.replace(/\n/g, '<br/>');
 	}

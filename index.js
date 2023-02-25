@@ -68,6 +68,8 @@ async function mail() {
 
 	console.log('Email count:', emails.length);
 
+	await new Promise((r) => setTimeout(r, 3000));
+
 	let [list, chunkSize] = [emails, 90];
 	list = [...Array(Math.ceil(list.length / chunkSize))].map((_) =>
 		list.splice(0, chunkSize)
